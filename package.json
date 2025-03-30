@@ -1,0 +1,35 @@
+{
+  "homepage": "https://github.com/Iwuohacharles007/my-pogress#readme",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "vercel-build": "echo 'Build complete'"
+  },
+  "dependencies": {
+    "connect-flash": "^0.1.1",
+    "connect-mongo": "^5.1.0",
+    "connect-redis": "^8.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "ejs-mate": "^4.0.0",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "glob": "^11.0.1",
+    "inflight": "^1.0.6",
+    "joi": "^17.13.3",
+    "method-override": "^3.0.0",
+    "mongodb": "^6.15.0",
+    "mongoose": "^8.13.0",
+    "npmlog": "^7.0.1",
+    "redis": "^4.7.0",
+    "rimraf": "^6.0.1",
+    "uuid": "^11.1.0",
+    "vercel": "^28.18.5"
+  },
+  "devDependencies": {
+    "@rollup/plugin-inject": "^5.0.5",
+    "nodemon": "^3.1.9"
+  }
+}

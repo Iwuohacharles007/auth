@@ -1,0 +1,118 @@
+
+<% layout('layouts/boilerplate') %>
+<div class="container mt-5">
+    <!-- Campground Details -->
+    <div class="card shadow-lg">
+        <img src="<%= campground.image %>" alt="<%= campground.title %>" class="card-img-top" style="max-height: 400px; object-fit: cover;">
+        <div class="card-body">
+            <h1 class="card-title text-center text-uppercase mb-4"><%= campground.title %></h1>
+            <h4 class="text-primary text-center mb-4">$<%= campground.price %></h4>
+            <p class="card-text"><strong>Description:</strong> <%= campground.description %></p>
+
+            <% if (campground.location) { %>
+                <p class="card-text"><strong>Location:</strong> <%= campground.location %></p>
+            <% } else { %>
+                <p class="card-text text-muted">Location not available.</p>
+            <% } %>
+
+            <div class="d-flex justify-content-between mt-4">
+                <!-- Edit Button -->
+                <a href="/campgrounds/<%= campground._id %>/edit" class="btn btn-warning">
+                    <i class="fas fa-edit"></i> Edit
+                </a>
+
+                <!-- Delete Button -->
+                <form action="/campgrounds/<%= campground._id %>?_method=DELETE" method="POST">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reviews Section -->
+    <div class="card shadow-lg mt-5">
+        <div class="card-body">
+            <h2 class="card-title text-center">Reviews</h2>
+            <% if (campground.reviews && campground.reviews.length > 0) { %>
+                <% campground.reviews.forEach(review => { %>
+                    <div class="review-card border rounded p-3 my-3 shadow-sm">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex align-items-center">
+                                <button class="btn btn-outline-primary me-3" disabled>
+                                    Rating: <%= review.rating %>
+                                </button>
+                                <% if (review.author) { %>
+                                    <p class="mb-0"><strong><%= review.author %></strong></p>
+                                <% } else { %>
+                                    <p class="mb-0 text-muted"><em>Anonymous</em></p>
+                                <% } %>
+                            </div>
+                            <!-- Delete Review Button -->
+                            <form action="/campgrounds/<%= campground._id %>/reviews/<%= review._id %>?_method=DELETE" method="POST" class="ms-2">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        <p class="mt-2"><%= review.body %></p>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <p class="text-muted text-center">No reviews yet. Be the first to leave one!</p>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Leave a Review Section -->
+    <div class="card shadow-lg mt-5">
+        <div class="card-body">
+            <h2 class="card-title text-center">Leave a Review</h2>
+            <form action="/campgrounds/<%= campground._id %>/reviews" method="POST">
+                <!-- Rating Slider -->
+                <div class="mb-3">
+                    <label for="rating" class="form-label"><strong>Rating (1-5):</strong></label>
+                    <input type="range" class="form-range" id="rating" name="rating" min="1" max="5" required>
+                </div>
+
+                <!-- Review Text -->
+                <div class="mb-3">
+                    <label for="body" class="form-label"><strong>Your Review:</strong></label>
+                    <textarea class="form-control" id="body" name="body" rows="3" placeholder="Share your thoughts..." required></textarea>
+                </div>
+
+                <!-- Reviewer Name -->
+                <div class="mb-3">
+                    <label for="author" class="form-label"><strong>Your Name:</strong></label>
+                    <input type="text" class="form-control" id="author" name="author" placeholder="Your name (optional)">
+                </div>
+
+                <!-- Submit Button -->
+                <div class="text-center">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-paper-plane"></i> Submit Review
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Back to Campgrounds Button -->
+    <div class="text-center mt-4">
+        <a href="/campgrounds" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Campgrounds
+        </a>
+    </div>
+</div>
+
+<!-- Additional Styles -->
+<style>
+    .review-card {
+        background-color: #f9f9f9;
+    }
+
+    .review-card:hover {
+        background-color: #f0f8ff;
+    }
+</style>
