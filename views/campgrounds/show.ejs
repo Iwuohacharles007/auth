@@ -1,4 +1,3 @@
-
 <% layout('layouts/boilerplate') %>
 <div class="container mt-5">
     <!-- Campground Details -->
@@ -70,22 +69,23 @@
         <div class="card-body">
             <h2 class="card-title text-center">Leave a Review</h2>
             <form action="/campgrounds/<%= campground._id %>/reviews" method="POST">
-                <!-- Rating Slider -->
+                <!-- Rating Dropdown -->
                 <div class="mb-3">
                     <label for="rating" class="form-label"><strong>Rating (1-5):</strong></label>
-                    <input type="range" class="form-range" id="rating" name="rating" min="1" max="5" required>
+                    <select class="form-select" id="rating" name="review[rating]" required>
+                        <option value="" disabled selected>Select a rating</option>
+                        <option value="1">1 - ★☆☆☆☆</option>
+                        <option value="2">2 - ★★☆☆☆</option>
+                        <option value="3">3 - ★★★☆☆</option>
+                        <option value="4">4 - ★★★★☆</option>
+                        <option value="5">5 - ★★★★★</option>
+                    </select>
                 </div>
 
                 <!-- Review Text -->
                 <div class="mb-3">
                     <label for="body" class="form-label"><strong>Your Review:</strong></label>
-                    <textarea class="form-control" id="body" name="body" rows="3" placeholder="Share your thoughts..." required></textarea>
-                </div>
-
-                <!-- Reviewer Name -->
-                <div class="mb-3">
-                    <label for="author" class="form-label"><strong>Your Name:</strong></label>
-                    <input type="text" class="form-control" id="author" name="author" placeholder="Your name (optional)">
+                    <textarea class="form-control" id="body" name="review[body]" rows="3" placeholder="Share your thoughts..." required></textarea>
                 </div>
 
                 <!-- Submit Button -->

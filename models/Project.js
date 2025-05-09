@@ -1,30 +1,17 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const ProjectSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: {
-    type: String,
-    maxlength: 500
-  },
-  technologies: {
-    type: [String],
-    default: []
-  },
-  status: {
-    type: String,
-    enum: ['In Progress', 'Completed', 'On Hold'],
-    default: 'In Progress'
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-}, {
-  timestamps: true
+const reviewSchema = new Schema({
+    body: String,
+    rating: {
+        type: Number,
+        min: 1,
+        max: 5
+    },
+    author: {
+        type: String, // Change this to String instead of ObjectId
+        required: true
+    }
 });
 
-module.exports = mongoose.model('Project', ProjectSchema);
+module.exports = mongoose.model('Review', reviewSchema);

@@ -1,32 +1,34 @@
-require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const ejsMate = require('ejs-mate');
 const methodOverride = require('method-override');
-const flash = require('connect-flash');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const flash = require('connect-flash');
+const { auth } = require('express-openid-connect');
+require('dotenv').config();
+
+// Middleware and route imports
+const { isAuthenticated, loginHandler, handleAuthCallback } = require('./middleware/auth-middleware');
+const userRoutes = require('./routes/users');
+const campgroundRoutes = require('./routes/campgrounds');
+const reviewRoutes = require('./routes/reviews');
 const ExpressError = require('./utils/ExpressError');
-const catchAsync = require('./utils/catchAsync');
-const Campground = require('./models/campground');
-const Review = require('./models/review');
-const { campgroundSchema, reviewSchema } = require('./schemas');
 
 const app = express();
 
-// Database connection
-const dbUrl = process.env.MONGODB_URI || 'mongodb://localhost:27017/yelpcamp';
-mongoose.connect(dbUrl, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+// MongoDB connection
+mongoose.connect('mongodb://localhost:27017/yelp-camp', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'Connection error:'));
+db.once('open', () => {
+  console.log('✅ MongoDB connected');
 });
 
-const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', () => console.log('✅ Database connected'));
-
-// EJS setup
+// View engine
 app.engine('ejs', ejsMate);
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -36,117 +38,73 @@ app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Session & Flash Configuration
-const sessionConfig = {
-    store: MongoStore.create({ mongoUrl: dbUrl, touchAfter: 24 * 3600 }),
-    secret: process.env.SESSION_SECRET || 'thisshouldbeabettersecret',
-    resave: false,
-    saveUninitialized: true,
-    cookie: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 1000 * 60 * 60 * 24 * 7,
-    },
-};
-
-app.use(session(sessionConfig));
+// Session
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'supersecretkey',
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 * 7
+  }
+}));
 app.use(flash());
 
-// Make flash messages available in templates
+// Auth0 middleware
+app.use(auth({
+  authRequired: false,
+  auth0Logout: true,
+  issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
+  baseURL: process.env.AUTH0_BASE_URL || 'http://localhost:3000',
+  clientID: process.env.AUTH0_CLIENT_ID,
+  clientSecret: process.env.AUTH0_CLIENT_SECRET,
+  secret: process.env.AUTH0_SECRET,
+  authorizationParams: {
+    response_type: 'code',
+    scope: 'openid profile email'
+  },
+  routes: {
+    callback: '/callback'
+  }
+}));
+
+// Set locals for views
 app.use((req, res, next) => {
-    res.locals.success = req.flash('success');
-    res.locals.error = req.flash('error');
-    next();
+  res.locals.currentUser = req.oidc.user || null;
+  res.locals.success = req.flash('success');
+  res.locals.error = req.flash('error');
+  next();
 });
 
-// Validation middleware
-const validateCampground = (req, res, next) => {
-    const { error } = campgroundSchema.validate(req.body);
-    if (error) throw new ExpressError(error.details.map((el) => el.message).join(','), 400);
-    next();
-};
+// Auth routes
+app.get('/login', loginHandler);
+app.get('/callback', handleAuthCallback);
+app.get('/logout', (req, res) => {
+  res.oidc.logout({ returnTo: process.env.AUTH0_BASE_URL || 'http://localhost:3000' });
+});
 
-const validateReview = (req, res, next) => {
-    const { error } = reviewSchema.validate(req.body);
-    if (error) throw new ExpressError(error.details.map((el) => el.message).join(','), 400);
-    next();
-};
+// App routes
+app.use('/', userRoutes);
+app.use('/campgrounds', campgroundRoutes);
+app.use('/campgrounds/:id/reviews', reviewRoutes);
 
-// Routes
-app.get('/', (req, res) => res.render('home'));
+// Home
+app.get('/', (req, res) => {
+  res.render('home');
+});
 
-// Campgrounds CRUD
-app.get('/campgrounds', catchAsync(async (req, res) => {
-    const campgrounds = await Campground.find({});
-    res.render('campgrounds/index', { campgrounds });
-}));
+// 404 handler
+app.all('*', (req, res, next) => {
+  next(new ExpressError('Page Not Found', 404));
+});
 
-app.get('/campgrounds/new', (req, res) => res.render('campgrounds/new'));
-
-app.post('/campgrounds', validateCampground, catchAsync(async (req, res) => {
-    const campground = new Campground(req.body.campground);
-    await campground.save();
-    req.flash('success', 'Successfully created a new campground!');
-    res.redirect(`/campgrounds/${campground._id}`);
-}));
-
-app.get('/campgrounds/:id', catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id).populate('reviews');
-    if (!campground) {
-        req.flash('error', 'Campground not found!');
-        return res.redirect('/campgrounds');
-    }
-    res.render('campgrounds/show', { campground });
-}));
-
-app.get('/campgrounds/:id/edit', catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id);
-    res.render('campgrounds/edit', { campground });
-}));
-
-app.put('/campgrounds/:id', validateCampground, catchAsync(async (req, res) => {
-    await Campground.findByIdAndUpdate(req.params.id, req.body.campground);
-    req.flash('success', 'Successfully updated campground!');
-    res.redirect(`/campgrounds/${req.params.id}`);
-}));
-
-app.delete('/campgrounds/:id', catchAsync(async (req, res) => {
-    await Campground.findByIdAndDelete(req.params.id);
-    req.flash('success', 'Successfully deleted campground!');
-    res.redirect('/campgrounds');
-}));
-
-// Reviews CRUD
-app.post('/campgrounds/:id/reviews', validateReview, catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id);
-    const review = new Review(req.body.review);
-    campground.reviews.push(review);
-    await review.save();
-    await campground.save();
-    req.flash('success', 'Successfully added review!');
-    res.redirect(`/campgrounds/${req.params.id}`);
-}));
-
-app.delete('/campgrounds/:id/reviews/:reviewId', catchAsync(async (req, res) => {
-    await Campground.findByIdAndUpdate(req.params.id, { $pull: { reviews: req.params.reviewId } });
-    await Review.findByIdAndDelete(req.params.reviewId);
-    req.flash('success', 'Successfully deleted review!');
-    res.redirect(`/campgrounds/${req.params.id}`);
-}));
-
-// Catch all unmatched routes
-app.all('*', (req, res, next) => next(new ExpressError('Page Not Found', 404)));
-
-// Error Handling Middleware
+// Error handler
 app.use((err, req, res, next) => {
-    const { statusCode = 500, message = 'Something went wrong' } = err;
-    res.status(statusCode).render('error', { statusCode, message });
+  const { statusCode = 500, message = 'Something went wrong' } = err;
+  res.status(statusCode).render('error', { statusCode, message });
 });
 
-// Export app for Vercel deployment
-module.exports = app;
-
-// Start server in local development
-if (require.main === module) {
-    app.listen(3000, () => console.log('🔥 Server running on port 3000'));
-}
+// Server start
+app.listen(3000, () => {
+  console.log('🚀 Server running at http://localhost:3000');
+});

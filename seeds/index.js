@@ -26,6 +26,7 @@ const getRandomLocation = () => {
 
 // Seed data with random locations
 const seedCampgrounds = Array.from({ length: 10 }, () => ({
+    author: '67ed4a81a9e6557ebb2e5e9d',
     title: `Campground ${Math.floor(Math.random() * 100)}`,
     price: Math.floor(Math.random() * 100) + 10,
     location: getRandomLocation(),
