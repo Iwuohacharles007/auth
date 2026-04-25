@@ -1,118 +1,823 @@
 <% layout('layouts/boilerplate') %>
-<div class="container mt-5">
-    <!-- Campground Details -->
-    <div class="card shadow-lg">
-        <img src="<%= campground.image %>" alt="<%= campground.title %>" class="card-img-top" style="max-height: 400px; object-fit: cover;">
-        <div class="card-body">
-            <h1 class="card-title text-center text-uppercase mb-4"><%= campground.title %></h1>
-            <h4 class="text-primary text-center mb-4">$<%= campground.price %></h4>
-            <p class="card-text"><strong>Description:</strong> <%= campground.description %></p>
 
-            <% if (campground.location) { %>
-                <p class="card-text"><strong>Location:</strong> <%= campground.location %></p>
-            <% } else { %>
-                <p class="card-text text-muted">Location not available.</p>
-            <% } %>
+<!-- MAPBOX CSS -->
+<link href='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css' rel='stylesheet' />
 
-            <div class="d-flex justify-content-between mt-4">
-                <!-- Edit Button -->
-                <a href="/campgrounds/<%= campground._id %>/edit" class="btn btn-warning">
-                    <i class="fas fa-edit"></i> Edit
-                </a>
+<!-- GOOGLE FONTS -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-                <!-- Delete Button -->
-                <form action="/campgrounds/<%= campground._id %>?_method=DELETE" method="POST">
-                    <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Reviews Section -->
-    <div class="card shadow-lg mt-5">
-        <div class="card-body">
-            <h2 class="card-title text-center">Reviews</h2>
-            <% if (campground.reviews && campground.reviews.length > 0) { %>
-                <% campground.reviews.forEach(review => { %>
-                    <div class="review-card border rounded p-3 my-3 shadow-sm">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="d-flex align-items-center">
-                                <button class="btn btn-outline-primary me-3" disabled>
-                                    Rating: <%= review.rating %>
-                                </button>
-                                <% if (review.author) { %>
-                                    <p class="mb-0"><strong><%= review.author %></strong></p>
-                                <% } else { %>
-                                    <p class="mb-0 text-muted"><em>Anonymous</em></p>
-                                <% } %>
-                            </div>
-                            <!-- Delete Review Button -->
-                            <form action="/campgrounds/<%= campground._id %>/reviews/<%= review._id %>?_method=DELETE" method="POST" class="ms-2">
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
-                        </div>
-                        <p class="mt-2"><%= review.body %></p>
-                    </div>
-                <% }) %>
-            <% } else { %>
-                <p class="text-muted text-center">No reviews yet. Be the first to leave one!</p>
-            <% } %>
-        </div>
-    </div>
-
-    <!-- Leave a Review Section -->
-    <div class="card shadow-lg mt-5">
-        <div class="card-body">
-            <h2 class="card-title text-center">Leave a Review</h2>
-            <form action="/campgrounds/<%= campground._id %>/reviews" method="POST">
-                <!-- Rating Dropdown -->
-                <div class="mb-3">
-                    <label for="rating" class="form-label"><strong>Rating (1-5):</strong></label>
-                    <select class="form-select" id="rating" name="review[rating]" required>
-                        <option value="" disabled selected>Select a rating</option>
-                        <option value="1">1 - ★☆☆☆☆</option>
-                        <option value="2">2 - ★★☆☆☆</option>
-                        <option value="3">3 - ★★★☆☆</option>
-                        <option value="4">4 - ★★★★☆</option>
-                        <option value="5">5 - ★★★★★</option>
-                    </select>
-                </div>
-
-                <!-- Review Text -->
-                <div class="mb-3">
-                    <label for="body" class="form-label"><strong>Your Review:</strong></label>
-                    <textarea class="form-control" id="body" name="review[body]" rows="3" placeholder="Share your thoughts..." required></textarea>
-                </div>
-
-                <!-- Submit Button -->
-                <div class="text-center">
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-paper-plane"></i> Submit Review
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Back to Campgrounds Button -->
-    <div class="text-center mt-4">
-        <a href="/campgrounds" class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i> Back to Campgrounds
-        </a>
-    </div>
-</div>
-
-<!-- Additional Styles -->
 <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        font-family: 'DM Sans', sans-serif;
+        background-color: #0f1117;
+        color: #e8e8e0;
+        overflow-x: hidden;
+    }
+
+    #map {
+        width: 100vw;
+        height: 520px;
+        display: block;
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw;
+        margin-right: -50vw;
+    }
+
+    .no-map-banner {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        background: #1a1d27;
+        text-align: center;
+        padding: 30px;
+        color: #aaa;
+        font-size: 0.95rem;
+        border-bottom: 1px solid #2a2d3a;
+    }
+
+    .full-page-wrapper {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        padding: 0 40px;
+        max-width: 100vw;
+    }
+
+    @media (max-width: 768px) {
+        .full-page-wrapper { padding: 0 16px; }
+    }
+
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 32px;
+        padding: 40px 0;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    @media (max-width: 1024px) {
+        .content-grid { grid-template-columns: 1fr; }
+    }
+
+    .carousel-wrap {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        background: #1a1d27;
+        margin-bottom: 28px;
+    }
+
+    .carousel-item img {
+        width: 100%;
+        height: 480px;
+        object-fit: cover;
+    }
+
+    .no-image-placeholder {
+        height: 280px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #555;
+        background: #1a1d27;
+    }
+
+    .section-card {
+        background: #181b26;
+        border: 1px solid #252836;
+        border-radius: 16px;
+        padding: 32px;
+        margin-bottom: 24px;
+        transition: border-color 0.3s ease;
+    }
+
+    .section-card:hover { border-color: #3a3f55; }
+
+    .camp-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 2rem;
+        color: #f0ede6;
+        margin-bottom: 8px;
+        line-height: 1.2;
+    }
+
+    .meta-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #888;
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+    .meta-row i { color: #6c8ebf; }
+    .meta-row strong { color: #bbb; }
+
+    .divider {
+        border: none;
+        border-top: 1px solid #252836;
+        margin: 20px 0;
+    }
+
+    .description-text {
+        color: #a0a0a8;
+        line-height: 1.85;
+        font-size: 0.97rem;
+        font-weight: 300;
+    }
+
+    .price-badge {
+        background: linear-gradient(135deg, #1e3a2a, #2d5a3d);
+        border: 1px solid #3a7a52;
+        color: #7ed99a;
+        padding: 14px 24px;
+        border-radius: 14px;
+        text-align: center;
+        min-width: 130px;
+        flex-shrink: 0;
+    }
+
+    .price-amount {
+        font-size: 1.7rem;
+        font-weight: 700;
+        display: block;
+        color: #7ed99a;
+        font-family: 'Playfair Display', serif;
+    }
+
+    .price-night {
+        font-size: 0.75rem;
+        color: #5aaa76;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-action {
+        padding: 11px 26px;
+        border-radius: 50px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.25s ease;
+        letter-spacing: 0.3px;
+        cursor: pointer;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #b8860b, #daa520);
+        border: none;
+        color: #0f1117;
+    }
+
+    .btn-delete {
+        background: transparent;
+        border: 1px solid #c0392b;
+        color: #e74c3c;
+    }
+
+    .btn-delete:hover {
+        background: #c0392b;
+        color: white;
+    }
+
+    .btn-back {
+        background: transparent;
+        border: 1px solid #3a3f55;
+        color: #888;
+    }
+
+    .btn-back:hover {
+        border-color: #6c8ebf;
+        color: #6c8ebf;
+    }
+
+    .map-controls {
+        background: #181b26;
+        border: 1px solid #252836;
+        border-radius: 16px;
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .zoom-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #666;
+        font-size: 0.85rem;
+    }
+
+    .zoom-info span { color: #6c8ebf; font-weight: 600; }
+
+    .map-controls select,
+    .map-controls button {
+        background: #252836;
+        border: 1px solid #3a3f55;
+        color: #ccc;
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .map-controls select:hover,
+    .map-controls button:hover {
+        border-color: #6c8ebf;
+        color: #fff;
+    }
+
+    .sidebar { position: sticky; top: 24px; }
+
+    .section-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.4rem;
+        color: #f0ede6;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-title i { color: #f0c040; font-size: 1.1rem; }
+
     .review-card {
-        background-color: #f9f9f9;
+        background: #1e2130;
+        border: 1px solid #2a2d3a;
+        border-left: 3px solid #6c8ebf;
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 16px;
+        transition: transform 0.2s ease, border-left-color 0.2s ease;
     }
 
     .review-card:hover {
-        background-color: #f0f8ff;
+        transform: translateX(4px);
+        border-left-color: #7ed99a;
+    }
+
+    .reviewer-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6c8ebf, #4a6fa5);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .reviewer-name { font-weight: 600; color: #d0d0d8; font-size: 0.9rem; }
+
+    .stars i { font-size: 0.8rem; }
+    .stars .text-warning { color: #f0c040 !important; }
+    .stars .text-muted { color: #333 !important; }
+
+    .review-body {
+        color: #888;
+        font-size: 0.9rem;
+        line-height: 1.7;
+        margin-top: 12px;
+    }
+
+    .no-reviews {
+        text-align: center;
+        padding: 40px 20px;
+        color: #555;
+    }
+
+    .no-reviews i { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+
+    .review-form-card {
+        background: #181b26;
+        border: 1px solid #252836;
+        border-radius: 16px;
+        padding: 28px;
+    }
+
+    .form-label { color: #bbb; font-size: 0.88rem; font-weight: 500; margin-bottom: 6px; }
+
+    .form-control, .form-select {
+        background: #1e2130 !important;
+        border: 1px solid #2a2d3a !important;
+        color: #ddd !important;
+        border-radius: 10px !important;
+        padding: 10px 14px !important;
+        font-size: 0.9rem !important;
+        transition: border-color 0.25s !important;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #6c8ebf !important;
+        box-shadow: 0 0 0 3px rgba(108,142,191,0.15) !important;
+        outline: none !important;
+    }
+
+    .form-control::placeholder { color: #444 !important; }
+
+    .btn-submit {
+        width: 100%;
+        padding: 13px;
+        background: linear-gradient(135deg, #2d5a3d, #3a7a52);
+        border: none;
+        border-radius: 10px;
+        color: #7ed99a;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.25s;
+        letter-spacing: 0.3px;
+    }
+
+    .btn-submit:hover {
+        background: linear-gradient(135deg, #3a7a52, #4a9a62);
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(61,160,90,0.25);
+    }
+
+    .page-footer-bar {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        background: #12151f;
+        border-top: 1px solid #1e2130;
+        padding: 24px 60px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 40px;
+    }
+
+    .btn-review-delete {
+        background: transparent;
+        border: 1px solid #3a2020;
+        color: #c0392b;
+        border-radius: 8px;
+        padding: 5px 10px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .btn-review-delete:hover {
+        background: #c0392b;
+        color: white;
+        border-color: #c0392b;
+    }
+
+    /* AUTH MODAL */
+    #authModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.75);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #authModal.active { display: flex; }
+
+    .auth-modal-box {
+        background: #181b26;
+        border: 1px solid #3a3f55;
+        border-radius: 16px;
+        padding: 44px 36px;
+        max-width: 420px;
+        width: 90%;
+        text-align: center;
+        animation: modalPop 0.2s ease;
+    }
+
+    @keyframes modalPop {
+        from { transform: scale(0.92); opacity: 0; }
+        to   { transform: scale(1);    opacity: 1; }
+    }
+
+    .auth-modal-icon {
+        font-size: 2.6rem;
+        color: #6c8ebf;
+        margin-bottom: 16px;
+        display: block;
+    }
+
+    .auth-modal-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.4rem;
+        color: #f0ede6;
+        margin-bottom: 10px;
+    }
+
+    .auth-modal-text {
+        color: #777;
+        font-size: 0.92rem;
+        line-height: 1.6;
+        margin-bottom: 28px;
+    }
+
+    .auth-modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-modal-register {
+        padding: 10px 24px;
+        background: linear-gradient(135deg, #2d5a3d, #3a7a52);
+        border: none;
+        border-radius: 50px;
+        color: #7ed99a;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        display: inline-block;
+    }
+
+    .btn-modal-register:hover {
+        background: linear-gradient(135deg, #3a7a52, #4a9a62);
+        color: #fff;
+        transform: translateY(-2px);
+    }
+
+    .btn-modal-login {
+        padding: 10px 24px;
+        background: linear-gradient(135deg, #2a3a5c, #3a5c8c);
+        border: 1px solid #4a6ea0;
+        border-radius: 50px;
+        color: #8ab4e8;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        display: inline-block;
+    }
+
+    .btn-modal-login:hover {
+        background: linear-gradient(135deg, #3a5c8c, #4a7abf);
+        color: #fff;
+        transform: translateY(-2px);
+    }
+
+    .btn-modal-cancel {
+        padding: 10px 20px;
+        background: transparent;
+        border: 1px solid #3a3f55;
+        border-radius: 50px;
+        color: #666;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-modal-cancel:hover {
+        border-color: #555;
+        color: #999;
     }
 </style>
+
+<%
+const campAuthor = campground.author?._id?.toString() || campground.author?.toString() || '';
+const currentId = currentUser?.auth0Id?.toString() || currentUser?.sub || currentUser?._id?.toString() || '';
+const isOwner = !!(currentUser && campAuthor && currentId && campAuthor === currentId);
+%>
+
+<!-- FULL SCREEN MAP AT TOP -->
+<% if (campground.geometry && campground.geometry.coordinates) { %>
+    <div id="map"></div>
+<% } else { %>
+    <div class="no-map-banner">
+        <i class="fas fa-exclamation-triangle me-2"></i> No map data available for this campground.
+    </div>
+<% } %>
+
+<!-- FULL WIDTH WRAPPER -->
+<div class="full-page-wrapper">
+    <div class="content-grid">
+
+        <!-- LEFT COLUMN -->
+        <div class="main-col">
+
+            <!-- CAROUSEL -->
+            <div class="carousel-wrap">
+                <div id="campgroundCarousel" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        <% if (campground.images && campground.images.length > 0) { %>
+                            <% campground.images.forEach((img, i) => { %>
+                                <div class="carousel-item <%= i === 0 ? 'active' : '' %>">
+                                    <img src="<%= img.url %>" alt="Campground image <%= i + 1 %>">
+                                </div>
+                            <% }) %>
+                        <% } else { %>
+                            <div class="carousel-item active">
+                                <div class="no-image-placeholder">
+                                    <i class="fas fa-image fa-3x mb-3"></i>
+                                    <p>No images available</p>
+                                </div>
+                            </div>
+                        <% } %>
+                    </div>
+                    <% if (campground.images && campground.images.length > 1) { %>
+                        <button class="carousel-control-prev" type="button" data-bs-target="#campgroundCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon"></span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#campgroundCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon"></span>
+                        </button>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- DETAILS CARD -->
+            <div class="section-card">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
+                    <div>
+                        <h1 class="camp-title"><%= campground.title %></h1>
+                        <div class="meta-row">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <strong><%= campground.location || 'Location not available' %></strong>
+                        </div>
+                        <div class="meta-row">
+                            <i class="fas fa-user-circle"></i>
+                            Posted by: <strong><%= currentUserName || 'Anonymous' %></strong>
+                        </div>
+                    </div>
+                    <div class="price-badge">
+                        <span class="price-amount">$<%= campground.price %></span>
+                        <span class="price-night">/night</span>
+                    </div>
+                </div>
+
+                <hr class="divider">
+                <p class="description-text"><%= campground.description %></p>
+
+                <!-- EDIT/DELETE BUTTONS — always visible -->
+                <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
+                    <% if (isOwner) { %>
+                        <a href="/campgrounds/<%= campground._id %>/edit" class="btn btn-action btn-edit">
+                            <i class="fas fa-edit me-2"></i>Edit Campground
+                        </a>
+                        <form action="/campgrounds/<%= campground._id %>?_method=DELETE" method="POST">
+                            <button type="submit" class="btn btn-action btn-delete">
+                                <i class="fas fa-trash me-2"></i>Delete
+                            </button>
+                        </form>
+                    <% } else { %>
+                        <button class="btn btn-action btn-edit" onclick="showAuthModal()">
+                            <i class="fas fa-edit me-2"></i>Edit Campground
+                        </button>
+                        <button class="btn btn-action btn-delete" onclick="showAuthModal()">
+                            <i class="fas fa-trash me-2"></i>Delete
+                        </button>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- MAP CONTROLS -->
+            <% if (campground.geometry && campground.geometry.coordinates) { %>
+                <div class="map-controls">
+                    <div class="zoom-info">
+                        <i class="fas fa-search-location" style="color:#6c8ebf;"></i>
+                        <span style="color:#666;">Zoom:</span>
+                        <span id="zoomLevel">10</span>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <select id="mapStyle">
+                            <option value="streets-v12">🗺️ Streets</option>
+                            <option value="satellite-v9">🛰️ Satellite</option>
+                            <option value="light-v11">☀️ Light</option>
+                            <option value="dark-v11">🌙 Dark</option>
+                            <option value="outdoors-v12" selected>🏕️ Outdoors</option>
+                        </select>
+                        <button id="centerBtn"><i class="fas fa-crosshairs me-1"></i>Center</button>
+                    </div>
+                </div>
+            <% } %>
+
+            <!-- REVIEWS -->
+            <div class="section-card">
+                <h2 class="section-title">
+                    <i class="fas fa-star"></i> Reviews
+                    <span style="font-size:0.85rem; color:#555; font-family:'DM Sans',sans-serif; font-weight:400;">
+                        (<%= campground.reviews ? campground.reviews.length : 0 %>)
+                    </span>
+                </h2>
+
+                <% if (campground.reviews && campground.reviews.length > 0) { %>
+                    <% for(let review of campground.reviews) { %>
+                        <div class="review-card">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+                                <div style="display:flex; align-items:center; gap:14px;">
+                                    <div class="reviewer-avatar">
+                                        <%= (review.author?.username || currentUserName || 'U').charAt(0).toUpperCase() %>
+                                    </div>
+                                    <div>
+                                        <p class="reviewer-name"><%= review.author?.username || currentUserName || 'User' %></p>
+                                        <div class="stars">
+                                            <% for(let i = 1; i <= 5; i++) { %>
+                                                <i class="fas fa-star <%= i <= review.rating ? 'text-warning' : 'text-muted' %>"></i>
+                                            <% } %>
+                                            <small style="color:#555; margin-left:4px;">(<%= review.rating %>/5)</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <%
+                                const reviewAuthor = review.author?._id?.toString() || review.author?.toString() || '';
+                                const isReviewOwner = !!(currentUser && reviewAuthor && currentId && reviewAuthor === currentId);
+                                %>
+                                <% if (isReviewOwner) { %>
+                                    <form action="/campgrounds/<%= campground._id %>/reviews/<%= review._id %>?_method=DELETE" method="POST">
+                                        <button type="submit" class="btn-review-delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                <% } %>
+                            </div>
+                            <p class="review-body"><%= review.body %></p>
+                        </div>
+                    <% } %>
+                <% } else { %>
+                    <div class="no-reviews">
+                        <i class="fas fa-comment-slash"></i>
+                        <p>No reviews yet. Be the first to leave one!</p>
+                    </div>
+                <% } %>
+            </div>
+
+        </div>
+
+        <!-- RIGHT SIDEBAR -->
+        <div class="sidebar">
+            <% if (currentUser) { %>
+                <div class="review-form-card">
+                    <h3 class="section-title">
+                        <i class="fas fa-pen" style="color:#7ed99a;"></i> Leave a Review
+                    </h3>
+                    <form action="/campgrounds/<%= campground._id %>/reviews" method="POST">
+                        <div class="mb-3">
+                            <label for="rating" class="form-label">Your Rating</label>
+                            <select class="form-select" id="rating" name="review[rating]" required>
+                                <option value="" disabled selected>Select a rating</option>
+                                <option value="1">1 ★ — Poor</option>
+                                <option value="2">2 ★★ — Fair</option>
+                                <option value="3">3 ★★★ — Good</option>
+                                <option value="4">4 ★★★★ — Very Good</option>
+                                <option value="5">5 ★★★★★ — Excellent</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="body" class="form-label">Your Review</label>
+                            <textarea class="form-control" name="review[body]" id="body" rows="5" placeholder="Share your experience..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn-submit">
+                            <i class="fas fa-paper-plane me-2"></i>Submit Review
+                        </button>
+                    </form>
+                </div>
+            <% } else { %>
+                <!-- Unauthenticated: visible but intercepts all clicks -->
+                <div class="review-form-card">
+                    <h3 class="section-title">
+                        <i class="fas fa-pen" style="color:#7ed99a;"></i> Leave a Review
+                    </h3>
+                    <div class="mb-3">
+                        <label class="form-label">Your Rating</label>
+                        <select class="form-select" onclick="showAuthModal()">
+                            <option>Select a rating</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Your Review</label>
+                        <textarea class="form-control" rows="5" placeholder="Share your experience..." onclick="showAuthModal()" readonly></textarea>
+                    </div>
+                    <button class="btn-submit" onclick="showAuthModal()">
+                        <i class="fas fa-paper-plane me-2"></i>Submit Review
+                    </button>
+                </div>
+            <% } %>
+        </div>
+
+    </div>
+</div>
+
+<!-- FOOTER BAR -->
+<div class="page-footer-bar">
+    <a href="/campgrounds" class="btn btn-action btn-back">
+        <i class="fas fa-arrow-left me-2"></i>Back to All Campgrounds
+    </a>
+    <small style="color:#444;">YelpCamp &copy; <%= new Date().getFullYear() %></small>
+</div>
+
+<!-- AUTH MODAL -->
+<div id="authModal">
+    <div class="auth-modal-box">
+        <i class="fas fa-lock auth-modal-icon"></i>
+        <h4 class="auth-modal-title">Not Authenticated</h4>
+        <p class="auth-modal-text">
+            You are not authenticated. Register to create your campground and interact with listings.
+        </p>
+        <div class="auth-modal-actions">
+            <!-- <a href="/register" class="btn-modal-register">
+                <i class="fas fa-user-plus me-2"></i>Register
+            </a>
+            <a href="/login" class="btn-modal-login">
+                <i class="fas fa-sign-in-alt me-2"></i>Login
+            </a> -->
+            <button class="btn-modal-cancel" onclick="closeAuthModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- MAPBOX JS -->
+<script src='https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js'></script>
+<script>
+    // Auth Modal
+    function showAuthModal() {
+        document.getElementById('authModal').classList.add('active');
+    }
+
+    function closeAuthModal() {
+        document.getElementById('authModal').classList.remove('active');
+    }
+
+    // Close on backdrop click
+    document.getElementById('authModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAuthModal();
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeAuthModal();
+    });
+
+    // Mapbox
+    const mapToken = '<%- mapBoxToken %>';
+    const campgroundData = <%- JSON.stringify(campground) %>;
+
+    if (campgroundData.geometry && campgroundData.geometry.coordinates) {
+        mapboxgl.accessToken = mapToken;
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/outdoors-v12',
+            center: campgroundData.geometry.coordinates,
+            zoom: 10
+        });
+
+        map.addControl(new mapboxgl.NavigationControl());
+        map.addControl(new mapboxgl.FullscreenControl());
+
+        new mapboxgl.Marker({ color: '#e74c3c' })
+            .setLngLat(campgroundData.geometry.coordinates)
+            .setPopup(
+                new mapboxgl.Popup({ offset: 25 })
+                    .setHTML(`
+                        <div style="font-family:'DM Sans',sans-serif; padding:6px; min-width:150px;">
+                            <h6 style="color:#2c3e50; margin:0 0 5px; font-size:0.95rem;">${campgroundData.title}</h6>
+                            <p style="color:#7f8c8d; margin:0; font-size:0.8rem;">
+                                <i class="fas fa-map-marker-alt"></i> ${campgroundData.location}
+                            </p>
+                            <p style="color:#27ae60; margin:6px 0 0; font-weight:700; font-size:0.9rem;">
+                                $${campgroundData.price}/night
+                            </p>
+                        </div>
+                    `)
+            )
+            .addTo(map);
+
+        document.getElementById('centerBtn').addEventListener('click', () => {
+            map.flyTo({ center: campgroundData.geometry.coordinates, zoom: 12, essential: true });
+        });
+
+        document.getElementById('mapStyle').addEventListener('change', (e) => {
+            map.setStyle('mapbox://styles/mapbox/' + e.target.value);
+        });
+
+        map.on('zoom', () => {
+            document.getElementById('zoomLevel').innerText = Math.round(map.getZoom());
+        });
+    }
+</script>

@@ -1,30 +1,485 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to YelpCamp</title>
-  <link rel="stylesheet" href="/stylesheets/style.css" />
-</head>
-<body>
-  <header>
-    <h1>Welcome to YelpCamp</h1>
-    <nav>
-      <a href="/campgrounds">View Campgrounds</a>
-      <a href="/campgrounds/new">Add New Campground</a>
-    </nav>
-  </header>
-  
-  <% if (success) { %>
-    <p class="success"><%= success %></p>
-  <% } %>
-  
-  <% if (error) { %>
-    <p class="error"><%= error %></p>
-  <% } %>
+<% layout('layouts/boilerplate') %>
 
-  <footer>
-    <p>&copy; 2025 YelpCamp. All rights reserved.</p>
-  </footer>
-</body>
-</html>
+<!-- GOOGLE FONTS -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        font-family: 'DM Sans', sans-serif;
+        background-color: #0f1117;
+        color: #e8e8e0;
+        overflow-x: hidden;
+    }
+
+    /* ===== HERO SECTION ===== */
+    .home-hero {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        overflow: hidden;
+        background: #0f1117;
+        padding: 60px 24px;
+    }
+
+    /* Animated radial glow blobs */
+    .home-hero::before {
+        content: '';
+        position: absolute;
+        width: 800px;
+        height: 800px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(61,160,90,0.08) 0%, transparent 70%);
+        top: -200px;
+        left: 50%;
+        transform: translateX(-50%);
+        animation: pulse 6s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    .home-hero::after {
+        content: '';
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(108,142,191,0.06) 0%, transparent 70%);
+        bottom: 0;
+        right: 10%;
+        animation: pulse 8s ease-in-out 2s infinite;
+        pointer-events: none;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.6; }
+        50%       { transform: translateX(-50%) scale(1.15); opacity: 1; }
+    }
+
+    /* Grid lines overlay */
+    .hero-grid-lines {
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+        background-size: 64px 64px;
+        mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+        pointer-events: none;
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 2;
+        max-width: 760px;
+        animation: fadeUp 0.9s cubic-bezier(0.4,0,0.2,1) both;
+    }
+
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(28px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Eyebrow */
+    .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.72rem;
+        font-weight: 500;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #7ed99a;
+        margin-bottom: 28px;
+    }
+
+    .hero-eyebrow::before,
+    .hero-eyebrow::after {
+        content: '';
+        width: 28px;
+        height: 1px;
+        background: #3a7a52;
+    }
+
+    /* Main heading */
+    .hero-content h1 {
+        font-family: 'Playfair Display', serif;
+        font-size: clamp(3.2rem, 9vw, 6.5rem);
+        font-weight: 700;
+        line-height: 1.05;
+        letter-spacing: -1px;
+        color: #f0ede6;
+        margin-bottom: 10px;
+    }
+
+    .hero-content h1 .italic-green {
+        font-style: italic;
+        color: #7ed99a;
+    }
+
+    .hero-content h1 .dim {
+        color: #2a2d3a;
+    }
+
+    /* Sub heading */
+    .hero-sub {
+        font-family: 'Playfair Display', serif;
+        font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+        font-weight: 400;
+        font-style: italic;
+        color: #444;
+        margin-bottom: 22px;
+        letter-spacing: 0.01em;
+    }
+
+    /* Description */
+    .hero-desc {
+        font-size: 1rem;
+        font-weight: 300;
+        color: #555;
+        line-height: 1.8;
+        max-width: 520px;
+        margin: 0 auto 44px;
+    }
+
+    /* CTA Buttons */
+    .hero-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .btn-primary-hero {
+        padding: 15px 36px;
+        background: linear-gradient(135deg, #2d5a3d, #3a7a52);
+        border: 1px solid #3a7a52;
+        color: #7ed99a;
+        border-radius: 50px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.25s ease;
+        letter-spacing: 0.03em;
+    }
+
+    .btn-primary-hero:hover {
+        background: linear-gradient(135deg, #3a7a52, #4a9a62);
+        color: #fff;
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(61,160,90,0.3);
+        text-decoration: none;
+    }
+
+    .btn-ghost-hero {
+        padding: 14px 32px;
+        background: transparent;
+        border: 1px solid #252836;
+        color: #666;
+        border-radius: 50px;
+        font-weight: 400;
+        font-size: 0.9rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.25s ease;
+    }
+
+    .btn-ghost-hero:hover {
+        border-color: #3a7a52;
+        color: #7ed99a;
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+
+    /* ===== STATS BAR ===== */
+    .stats-strip {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        background: #12151f;
+        border-top: 1px solid #1e2130;
+        border-bottom: 1px solid #1e2130;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        animation: fadeUp 0.9s 0.3s cubic-bezier(0.4,0,0.2,1) both;
+    }
+
+    .stat-item {
+        padding: 32px 24px;
+        text-align: center;
+        border-right: 1px solid #1e2130;
+    }
+
+    .stat-item:last-child { border-right: none; }
+
+    .stat-number {
+        font-family: 'Playfair Display', serif;
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #7ed99a;
+        line-height: 1;
+        margin-bottom: 6px;
+    }
+
+    .stat-label {
+        font-size: 0.72rem;
+        font-weight: 400;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #444;
+    }
+
+    /* ===== FEATURES STRIP ===== */
+    .features-wrap {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        padding: 80px 60px;
+        background: #0f1117;
+        animation: fadeUp 0.9s 0.5s cubic-bezier(0.4,0,0.2,1) both;
+    }
+
+    @media (max-width: 768px) {
+        .features-wrap { padding: 52px 20px; }
+    }
+
+    .features-label {
+        font-size: 0.72rem;
+        font-weight: 500;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #7ed99a;
+        text-align: center;
+        margin-bottom: 14px;
+    }
+
+    .features-heading {
+        font-family: 'Playfair Display', serif;
+        font-size: clamp(1.8rem, 4vw, 2.8rem);
+        color: #f0ede6;
+        text-align: center;
+        font-weight: 400;
+        margin-bottom: 56px;
+        font-style: italic;
+    }
+
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .feature-card {
+        background: #181b26;
+        border: 1px solid #252836;
+        border-radius: 18px;
+        padding: 32px 28px;
+        transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        border-color: #3a7a52;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+    }
+
+    .feature-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #1e3a2a, #2d5a3d);
+        border: 1px solid #3a7a52;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        color: #7ed99a;
+        margin-bottom: 20px;
+    }
+
+    .feature-card h3 {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.15rem;
+        color: #f0ede6;
+        font-weight: 400;
+        margin-bottom: 10px;
+    }
+
+    .feature-card p {
+        font-size: 0.875rem;
+        color: #555;
+        line-height: 1.7;
+        font-weight: 300;
+    }
+
+    /* ===== FOOTER BAR ===== */
+    .page-footer-bar {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        background: #12151f;
+        border-top: 1px solid #1e2130;
+        padding: 22px 60px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .footer-brand {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.1rem;
+        color: #444;
+    }
+
+    .footer-brand span { color: #7ed99a; }
+
+    /* ===== FLASH MESSAGES ===== */
+    .flash-wrap {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        padding: 0 60px;
+        margin-top: 16px;
+    }
+
+    .flash-success {
+        background: rgba(61,160,90,0.1);
+        border-left: 3px solid #7ed99a;
+        color: #7ed99a;
+        padding: 12px 18px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    .flash-error {
+        background: rgba(220,60,60,0.1);
+        border-left: 3px solid #dc3c3c;
+        color: #f07070;
+        padding: 12px 18px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .flash-wrap { padding: 0 20px; }
+        .stats-strip { grid-template-columns: 1fr; }
+        .stat-item { border-right: none; border-bottom: 1px solid #1e2130; }
+        .stat-item:last-child { border-bottom: none; }
+        .page-footer-bar { padding: 22px 20px; justify-content: center; text-align: center; }
+    }
+</style>
+
+<!-- Flash messages -->
+<% if (success && success.length) { %>
+<div class="flash-wrap">
+    <div class="flash-success"><i class="fas fa-check-circle" style="margin-right:8px;"></i><%= success %></div>
+</div>
+<% } %>
+<% if (error && error.length) { %>
+<div class="flash-wrap">
+    <div class="flash-error"><i class="fas fa-exclamation-circle" style="margin-right:8px;"></i><%= error %></div>
+</div>
+<% } %>
+
+<!-- ===== HERO ===== -->
+<section class="home-hero">
+    <div class="hero-grid-lines"></div>
+
+    <div class="hero-content">
+        <div class="hero-eyebrow">Discover · Explore · Escape</div>
+
+        <h1>
+            Find Your<br>
+            <span class="italic-green">Wild</span> Place
+        </h1>
+
+        <p class="hero-sub">Where every trail leads somewhere unforgettable.</p>
+
+        <p class="hero-desc">
+            Handpicked campgrounds across mountains, coastlines, forests,
+            and deserts. Your next great adventure is one click away.
+        </p>
+
+        <div class="hero-actions">
+            <a href="/campgrounds" class="btn-primary-hero">
+                <i class="fas fa-compass"></i> Explore Campgrounds
+            </a>
+            <% if (currentUser) { %>
+                <a href="/campgrounds/new" class="btn-ghost-hero">
+                    <i class="fas fa-plus"></i> Add a Camp
+                </a>
+            <% } else { %>
+                <a href="/login" class="btn-ghost-hero">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </a>
+            <% } %>
+        </div>
+    </div>
+</section>
+
+<!-- ===== STATS ===== -->
+<div class="stats-strip">
+    <div class="stat-item">
+        <div class="stat-number">500+</div>
+        <div class="stat-label">Campgrounds</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-number">50+</div>
+        <div class="stat-label">States Covered</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-number">10k+</div>
+        <div class="stat-label">Happy Campers</div>
+    </div>
+</div>
+
+<!-- ===== FEATURES ===== -->
+<div class="features-wrap">
+    <p class="features-label">Why YelpCamp</p>
+    <h2 class="features-heading">Everything you need for the wild</h2>
+
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-map-marked-alt"></i></div>
+            <h3>Interactive Maps</h3>
+            <p>Explore campgrounds visually with our cluster map. Find spots near you or plan cross-country adventures.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-star"></i></div>
+            <h3>Real Reviews</h3>
+            <p>Read honest reviews from fellow campers. Know what to expect before you pack your tent.</p>
+        </div>
+        <!-- <div class="feature-card">
+            <div class="feature-icon"><i class="fas fa-campground"></i></div> -->
+            <h3>Add Your Spot</h3>
+            <p>Know a hidden gem? Share it with the community and help others find their perfect escape.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="page-footer-bar">
+    <span class="footer-brand">Yelp<span>Camp</span></span>
+    <small style="color:#333;">&copy; <%= new Date().getFullYear() %> All rights reserved</small>
+</div>

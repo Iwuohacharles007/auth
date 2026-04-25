@@ -1,28 +1,547 @@
 <% layout('layouts/boilerplate') %>
-<div class="container mt-4">
-    <h1>Edit Campground</h1>
-    <form action="/campgrounds/<%= campground._id %>?_method=PUT" method="POST">
-        <div class="mb-3">
-            <label for="title" class="form-label">Title:</label>
-            <input type="text" id="title" name="campground[title]" class="form-control" value="<%= campground.title %>" required>
-        </div>
-        <div class="mb-3">
-            <label for="price" class="form-label">Price:</label>
-            <input type="number" id="price" name="campground[price]" class="form-control" value="<%= campground.price %>" step="0.01" required>
-        </div>
-        <div class="mb-3">
-            <label for="description" class="form-label">Description:</label>
-            <textarea id="description" name="campground[description]" class="form-control" rows="3" required><%= campground.description %></textarea>
-        </div>
-        <div class="mb-3">
-            <label for="location" class="form-label">Location:</label>
-            <input type="text" id="location" name="campground[location]" class="form-control" value="<%= campground.location %>" required>
-        </div>
-        <div class="mb-3">
-            <label for="image" class="form-label">Image URL:</label>
-            <input type="url" id="image" name="campground[image]" class="form-control" value="<%= campground.image %>" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Update Campground</button>
-        <a href="/campgrounds/<%= campground._id %>" class="btn btn-secondary">Cancel</a> <!-- Optional cancel button -->
-    </form>
+
+<!-- GOOGLE FONTS -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+        font-family: 'DM Sans', sans-serif;
+        background-color: #0f1117;
+        color: #e8e8e0;
+        overflow-x: hidden;
+    }
+
+    /* ===== FULL-WIDTH HERO ===== */
+    .page-hero {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        background: linear-gradient(135deg, #0f1117 0%, #1a1d2e 60%, #0f1117 100%);
+        border-bottom: 1px solid #1e2130;
+        padding: 52px 60px 44px;
+    }
+
+    .page-hero h1 {
+        font-family: 'Playfair Display', serif;
+        font-size: clamp(2rem, 4vw, 3rem);
+        color: #f0ede6;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        line-height: 1.2;
+    }
+
+    .page-hero h1 span { color: #7ed99a; font-style: italic; }
+
+    .page-hero p {
+        color: #555;
+        font-size: 0.95rem;
+        margin-top: 8px;
+        font-weight: 300;
+    }
+
+    @media (max-width: 768px) {
+        .page-hero { padding: 36px 20px 30px; }
+    }
+
+    /* ===== FULL-WIDTH WRAPPER ===== */
+    .full-page-wrapper {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        padding: 48px 60px;
+    }
+
+    @media (max-width: 768px) {
+        .full-page-wrapper { padding: 28px 16px; }
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 32px;
+        max-width: 1300px;
+        margin: 0 auto;
+        align-items: start;
+    }
+
+    @media (max-width: 1024px) {
+        .form-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ===== SECTION CARD ===== */
+    .section-card {
+        background: #181b26;
+        border: 1px solid #252836;
+        border-radius: 18px;
+        padding: 32px;
+        margin-bottom: 24px;
+    }
+
+    .card-heading {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.15rem;
+        color: #f0ede6;
+        margin-bottom: 22px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .card-heading i { color: #7ed99a; font-size: 1rem; }
+
+    /* ===== FORM ELEMENTS ===== */
+    .form-group { margin-bottom: 20px; }
+
+    .form-label {
+        display: block;
+        color: #888;
+        font-size: 0.82rem;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .form-control, .form-select {
+        width: 100%;
+        background: #1e2130;
+        border: 1px solid #2a2d3a;
+        color: #ddd;
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 0.92rem;
+        font-family: 'DM Sans', sans-serif;
+        transition: border-color 0.25s, box-shadow 0.25s;
+        outline: none;
+    }
+
+    .form-control:focus {
+        border-color: #6c8ebf;
+        box-shadow: 0 0 0 3px rgba(108,142,191,0.12);
+        background: #222638;
+        color: #f0ede6;
+    }
+
+    .form-control::placeholder { color: #3a3f55; }
+
+    textarea.form-control { resize: vertical; min-height: 110px; }
+
+    .input-hint {
+        font-size: 0.78rem;
+        color: #3a3f55;
+        margin-top: 6px;
+    }
+
+    /* ===== FILE INPUT ===== */
+    .file-drop-zone {
+        border: 2px dashed #2a2d3a;
+        border-radius: 12px;
+        padding: 28px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.25s, background 0.25s;
+        background: #1a1d28;
+        position: relative;
+    }
+
+    .file-drop-zone:hover {
+        border-color: #6c8ebf;
+        background: #1e2235;
+    }
+
+    .file-drop-zone input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+    }
+
+    .file-drop-zone i { font-size: 2rem; color: #3a3f55; margin-bottom: 10px; display: block; }
+    .file-drop-zone p { color: #555; font-size: 0.88rem; margin: 0; }
+    .file-drop-zone span { color: #6c8ebf; font-weight: 500; }
+
+    /* ===== IMAGE PREVIEW GRID ===== */
+    .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .preview-thumb {
+        border-radius: 10px;
+        overflow: hidden;
+        background: #1e2130;
+        border: 1px solid #2a2d3a;
+        position: relative;
+    }
+
+    .preview-thumb img {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .preview-thumb .preview-name {
+        padding: 6px 8px;
+        font-size: 0.72rem;
+        color: #555;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* ===== CURRENT IMAGES ===== */
+    .current-images-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 14px;
+        margin-top: 4px;
+    }
+
+    .img-delete-card {
+        background: #1e2130;
+        border: 1px solid #2a2d3a;
+        border-radius: 12px;
+        overflow: hidden;
+        transition: border-color 0.2s;
+    }
+
+    .img-delete-card img {
+        width: 100%;
+        height: 110px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .img-delete-card .check-row {
+        padding: 8px 10px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .img-delete-card input[type="checkbox"] {
+        accent-color: #e74c3c;
+        width: 15px;
+        height: 15px;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .img-delete-card label {
+        font-size: 0.75rem;
+        color: #c0392b;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    .img-delete-card:has(input:checked) {
+        border-color: #c0392b;
+        opacity: 0.7;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar-card {
+        background: #181b26;
+        border: 1px solid #252836;
+        border-radius: 18px;
+        padding: 28px;
+        position: sticky;
+        top: 24px;
+    }
+
+    .sidebar-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.1rem;
+        color: #f0ede6;
+        margin-bottom: 20px;
+    }
+
+    .tip-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .tip-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: #1e2130;
+        border: 1px solid #2a2d3a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 0.85rem;
+    }
+
+    .tip-text { font-size: 0.82rem; color: #555; line-height: 1.5; }
+    .tip-text strong { color: #888; display: block; margin-bottom: 2px; }
+
+    .divider { border: none; border-top: 1px solid #1e2130; margin: 20px 0; }
+
+    /* ===== BUTTONS ===== */
+    .btn-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 4px;
+    }
+
+    .btn-update {
+        flex: 1;
+        padding: 13px 24px;
+        background: linear-gradient(135deg, #2d5a3d, #3a7a52);
+        border: 1px solid #3a7a52;
+        color: #7ed99a;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.92rem;
+        cursor: pointer;
+        transition: all 0.25s;
+        font-family: 'DM Sans', sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-update:hover {
+        background: linear-gradient(135deg, #3a7a52, #4a9a62);
+        color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(61,160,90,0.25);
+    }
+
+    .btn-cancel {
+        padding: 13px 22px;
+        background: transparent;
+        border: 1px solid #2a2d3a;
+        color: #555;
+        border-radius: 10px;
+        font-size: 0.92rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.25s;
+        font-family: 'DM Sans', sans-serif;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-cancel:hover {
+        border-color: #6c8ebf;
+        color: #6c8ebf;
+        text-decoration: none;
+    }
+
+    /* ===== FOOTER BAR ===== */
+    .page-footer-bar {
+        width: 100vw;
+        position: relative;
+        left: 50%;
+        margin-left: -50vw;
+        background: #12151f;
+        border-top: 1px solid #1e2130;
+        padding: 20px 60px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 10px;
+    }
+
+    .footer-brand { font-family: 'Playfair Display', serif; font-size: 1rem; color: #444; }
+    .footer-brand span { color: #7ed99a; }
+</style>
+
+<!-- PAGE HERO -->
+<div class="page-hero">
+    <h1>Edit <span>Campground</span></h1>
+    <p>Update your campground details below</p>
 </div>
+
+<!-- MAIN CONTENT -->
+<div class="full-page-wrapper">
+    <div class="form-grid">
+
+        <!-- LEFT: FORM -->
+        <div>
+            <form action="/campgrounds/<%= campground._id %>?_method=PUT" method="POST" enctype="multipart/form-data">
+
+                <!-- BASIC DETAILS -->
+                <div class="section-card">
+                    <h2 class="card-heading"><i class="fas fa-info-circle"></i> Basic Details</h2>
+
+                    <div class="form-group">
+                        <label class="form-label">Title</label>
+                        <input type="text" name="campground[title]" class="form-control"
+                               value="<%= campground.title %>" placeholder="e.g. Sunset Ridge Camp" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Price per night ($)</label>
+                        <input type="number" name="campground[price]" class="form-control"
+                               value="<%= campground.price %>" step="0.01" placeholder="e.g. 29.99" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Location</label>
+                        <input type="text" name="campground[location]" class="form-control"
+                               value="<%= campground.location %>" placeholder="e.g. Yosemite, California" required>
+                        <p class="input-hint"><i class="fas fa-info-circle me-1"></i>Updating location will recalculate the map pin automatically.</p>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label class="form-label">Description</label>
+                        <textarea name="campground[description]" class="form-control"
+                                  rows="4" placeholder="Describe the campground experience..." required><%= campground.description %></textarea>
+                    </div>
+                </div>
+
+                <!-- IMAGE UPLOAD -->
+                <div class="section-card">
+                    <h2 class="card-heading"><i class="fas fa-images"></i> Add New Images</h2>
+
+                    <div class="file-drop-zone">
+                        <input type="file" id="images" name="images" accept="image/*" multiple>
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p><span>Click to upload</span> or drag & drop</p>
+                        <p style="margin-top:4px; color:#333; font-size:0.78rem;">JPG, PNG, GIF supported</p>
+                    </div>
+
+                    <!-- New Image Previews -->
+                    <div id="previewGrid" class="preview-grid" style="display:none;"></div>
+                </div>
+
+                <!-- CURRENT IMAGES -->
+                <% if (campground.images && campground.images.length > 0) { %>
+                    <div class="section-card">
+                        <h2 class="card-heading"><i class="fas fa-photo-video"></i> Current Images</h2>
+                        <p style="color:#444; font-size:0.83rem; margin-bottom:16px;">Check the box on any image to remove it when you save.</p>
+
+                        <div class="current-images-grid">
+                            <% campground.images.forEach((img, index) => { %>
+                                <div class="img-delete-card">
+                                    <img src="<%= img.url %>" alt="Image <%= index + 1 %>">
+                                    <div class="check-row">
+                                        <input type="checkbox" name="deleteImages[]"
+                                               value="<%= img.filename %>" id="delete-<%= index %>">
+                                        <label for="delete-<%= index %>">Delete</label>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+                    </div>
+                <% } %>
+
+                <!-- ACTION BUTTONS -->
+                <div class="btn-row">
+                    <button type="submit" class="btn-update">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <a href="/campgrounds/<%= campground._id %>" class="btn-cancel">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+
+            </form>
+        </div>
+
+        <!-- RIGHT: TIPS SIDEBAR -->
+        <div class="sidebar-card">
+            <h3 class="sidebar-title">✏️ Editing Tips</h3>
+
+            <div class="tip-item">
+                <div class="tip-icon" style="color:#f0c040;"><i class="fas fa-map-marker-alt"></i></div>
+                <div class="tip-text">
+                    <strong>Location matters</strong>
+                    Use a specific city or landmark so the map pin lands accurately.
+                </div>
+            </div>
+
+            <div class="tip-item">
+                <div class="tip-icon" style="color:#6c8ebf;"><i class="fas fa-camera"></i></div>
+                <div class="tip-text">
+                    <strong>Great photos sell</strong>
+                    Landscape shots in good lighting get 3× more views.
+                </div>
+            </div>
+
+            <div class="tip-item">
+                <div class="tip-icon" style="color:#7ed99a;"><i class="fas fa-dollar-sign"></i></div>
+                <div class="tip-text">
+                    <strong>Competitive pricing</strong>
+                    Check similar campgrounds in your area before setting a price.
+                </div>
+            </div>
+
+            <div class="tip-item">
+                <div class="tip-icon" style="color:#e07b54;"><i class="fas fa-align-left"></i></div>
+                <div class="tip-text">
+                    <strong>Detailed descriptions</strong>
+                    Mention nearby activities, facilities, and unique features.
+                </div>
+            </div>
+
+            <hr class="divider">
+
+            <div style="text-align:center;">
+                <a href="/campgrounds/<%= campground._id %>" style="color:#3a3f55; font-size:0.82rem; text-decoration:none;">
+                    <i class="fas fa-eye me-1"></i> Preview current listing
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- FOOTER BAR -->
+<div class="page-footer-bar">
+    <a href="/campgrounds" style="color:#3a3f55; font-size:0.85rem; text-decoration:none;">
+        <i class="fas fa-arrow-left me-2"></i>All Campgrounds
+    </a>
+    <span class="footer-brand">Yelp<span>Camp</span></span>
+</div>
+
+<script>
+    document.getElementById('images').addEventListener('change', function (e) {
+        const grid = document.getElementById('previewGrid');
+        grid.innerHTML = '';
+
+        const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+
+        if (files.length === 0) {
+            grid.style.display = 'none';
+            return;
+        }
+
+        grid.style.display = 'grid';
+
+        files.forEach((file, i) => {
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const thumb = document.createElement('div');
+                thumb.className = 'preview-thumb';
+                thumb.innerHTML = `
+                    <img src="${ev.target.result}" alt="Preview ${i + 1}">
+                    <div class="preview-name">${file.name}</div>
+                `;
+                grid.appendChild(thumb);
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+</script>

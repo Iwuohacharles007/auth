@@ -1,114 +1,37 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose'); // Added mongoose for validation
+const campground = require('../controllers/campgrounds');
 const catchAsync = require('../utils/catchAsync');
-const ExpressError = require('../utils/ExpressError');
-const Campground = require('../models/campground');
 const { isAuthenticated } = require('../middleware/auth-middleware');
 const { validateCampground } = require('../middleware/index');
+const multer = require('multer');
+const { storage } = require('../cloudinary');
+const upload = multer({ storage });
 
-
-
-
-// Show all campgrounds
-router.get('/', catchAsync(async (req, res) => {
-    const campgrounds = await Campground.find({});
-    res.render('campgrounds/index', { campgrounds });
-}));
-
-// Form to create new campground
-router.get('/new', isAuthenticated, (req, res) => {
-    res.render('campgrounds/new');
-});
-
-// Show one campground with its reviews
-router.get('/:id', catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id)
-        .populate({
-            path: 'reviews',
-            populate: {
-                path: 'author'
-            }
-        })
-        .populate('author');
-        
-    if (!campground) {
-        req.flash('error', 'Campground not found!');
-        return res.redirect('/campgrounds');
-    }
-    
-    res.render('campgrounds/show', { campground });
-}));
-
-// Create new campground
-router.post('/', isAuthenticated, validateCampground, catchAsync(async (req, res) => {
-    const campground = new Campground(req.body.campground);
-    
-    // Set the author to the Auth0 user ID
-    campground.author = req.oidc.user.sub;
-    
-    await campground.save();
-    req.flash('success', 'Successfully created a new campground!');
-    res.redirect(`/campgrounds/${campground._id}`);
-}));
-
-// Form to edit campground
-router.get('/:id/edit', isAuthenticated, catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id);
-    
-    if (!campground) {
-        req.flash('error', 'Campground not found!');
-        return res.redirect('/campgrounds');
-    }
-    
-    // Check if user is the author
-    if (campground.author.toString() !== req.oidc.user.sub) {
-        req.flash('error', 'You do not have permission to do that!');
-        return res.redirect(`/campgrounds/${req.params.id}`);
-    }
-    
-    res.render('campgrounds/edit', { campground });
-}));
-
-// Update campground
-router.put('/:id', isAuthenticated, validateCampground, catchAsync(async (req, res) => {
+// Validation Middleware: Prevents "Cast to ObjectId" errors
+const validateId = (req, res, next) => {
     const { id } = req.params;
-    const campground = await Campground.findById(id);
-    
-    if (!campground) {
-        req.flash('error', 'Campground not found!');
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        req.flash('error', 'Invalid ID provided');
         return res.redirect('/campgrounds');
     }
-    
-    // Check if user is the author
-    if (campground.author.toString() !== req.oidc.user.sub) {
-        req.flash('error', 'You do not have permission to do that!');
-        return res.redirect(`/campgrounds/${id}`);
-    }
-    
-    await Campground.findByIdAndUpdate(id, req.body.campground);
-    req.flash('success', 'Successfully updated campground!');
-    res.redirect(`/campgrounds/${id}`);
-}));
+    next();
+};
 
-// Delete campground
-router.delete('/:id', isAuthenticated, catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const campground = await Campground.findById(id);
-    
-    if (!campground) {
-        req.flash('error', 'Campground not found!');
-        return res.redirect('/campgrounds');
-    }
-    
-    // Check if user is the author
-    if (campground.author.toString() !== req.oidc.user.sub) {
-        req.flash('error', 'You do not have permission to do that!');
-        return res.redirect(`/campgrounds/${id}`);
-    }
-    
-    await Campground.findByIdAndDelete(id);
-    req.flash('success', 'Successfully deleted campground!');
-    res.redirect('/campgrounds');
-}));
+router.get('/', catchAsync(campground.index));
+
+router.get('/new', isAuthenticated, campground.renderNewForm);
+
+router.post('/', isAuthenticated, upload.array('images'), validateCampground, catchAsync(campground.createCampground));
+
+// Added validateId middleware to all routes using :id
+router.get('/:id', validateId, catchAsync(campground.showCampground));
+
+router.get('/:id/edit', isAuthenticated, validateId, catchAsync(campground.renderEditForm));
+
+router.put('/:id', isAuthenticated, upload.array('images'), validateId, validateCampground, catchAsync(campground.updateCampground));
+
+router.delete('/:id', isAuthenticated, validateId, catchAsync(campground.deleteCampground));
 
 module.exports = router;
